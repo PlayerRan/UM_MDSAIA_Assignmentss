@@ -1,0 +1,13 @@
+# Use the official Jupyter Notebook image
+FROM jupyter/base-notebook:python-3.7.12
+
+USER root
+# Install any required packages
+RUN apt-get update && apt-get install -y \
+    openjdk-8-jdk \
+    curl \
+    && apt-get clean
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+ENV PATH $JAVA_HOME/bin:$PATH
+
+RUN pip install pyspark==3.2.1

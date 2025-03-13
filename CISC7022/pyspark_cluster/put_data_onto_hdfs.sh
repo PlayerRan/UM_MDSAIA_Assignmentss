@@ -1,0 +1,1 @@
+docker exec -it namenode hdfs dfs -put ./input_files/ /

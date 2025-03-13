@@ -1,0 +1,189 @@
+version: '3'
+services:
+  sparkjupyter:
+    container_name: sparkjupyter
+    build: .
+    user: root
+    environment:
+      NB_USER: root
+      NB_GID: 0
+      NB_UID: 0
+      JUPYTER_TOKEN: ''
+      JUPYTER_ENABLE_LAB: "yes"
+    command: start-notebook.sh --NotebookApp.token='' --allow-root
+    links:
+      - namenode
+      - spark-master
+    ports:
+      - "9999:8888"
+    volumes:
+      - ./code:/home/jovyan/code/
+      - ./input_files:/home/jovyan/input_files/
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    volumes:
+      - ./hadoop/namenode:/hadoop/dfs/name
+      - ./input_files:/input_files
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+    ports:
+      - "9870:9870" 
+      - "9000:9000"
+      - "8020:8020"
+    
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
+    env_file:
+      - ./hadoop.env
+  
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
+    volumes:
+      - ./hadoop/historyserver:/hadoop/yarn/timeline
+    env_file:
+      - ./hadoop.env
+  
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager1
+    depends_on:
+      - namenode
+      - datanode1
+      - datanode2
+    env_file:
+      - ./hadoop.env
+  
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode1
+    depends_on:
+      - namenode
+    volumes:
+      - ./hadoop/datanode1:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+  
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    depends_on:
+      - namenode
+    volumes:
+      - ./hadoop/datanode2:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+  
+  datanode3:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode3
+    depends_on:
+      - namenode
+    volumes:
+      - ./hadoop/datanode3:/hadoop/dfs/data
+    env_file:
+      - ./hadoop.env
+
+  spark-master:
+    image: bde2020/spark-master:3.2.1-hadoop3.2
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - PATH=/spark/bin:$PATH
+      - INIT_DAEMON_STEP=setup_spark
+      - SPARK_PUBLIC_DNS=10.113.178.29
+    links:
+      - namenode
+    expose:
+      - 7077
+    hostname: spark-master
+
+    ports:
+      - 6066:6066
+      - 7077:7077
+      - 8080:8080
+    volumes:
+      - ./conf/master:/conf
+      - ./data:/tmp/data
+      - ./jars:/root/jars
+      - ./code:/code
+      - ./input_files:/input_files
+
+  spark-worker-1:
+    image: bde2020/spark-worker:3.2.1-hadoop3.2
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    hostname: spark-worker-1
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_CONF_DIR: /conf
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_PUBLIC_DNS: 10.113.178.29
+    links:
+      - spark-master
+
+      
+    ports:
+      - 8081:8081
+    volumes:
+      - ./conf/worker1:/conf
+      - ./data/worker1:/tmp/data
+
+  spark-worker-2:
+    image: bde2020/spark-worker:3.2.1-hadoop3.2
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    hostname: spark-worker-2
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_CONF_DIR: /conf
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_PUBLIC_DNS: 10.113.178.29
+    links:
+      - spark-master
+    ports:
+      - 8082:8081
+    volumes:
+      - ./conf/worker2:/conf
+      - ./data/worker2:/tmp/data
+  
+  spark-worker-3:
+    image: bde2020/spark-worker:3.2.1-hadoop3.2
+    container_name: spark-worker-3
+    depends_on:
+      - spark-master
+    hostname: spark-worker-3
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_CONF_DIR: /conf
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 2g
+      SPARK_PUBLIC_DNS: 10.113.178.29
+    links:
+      - spark-master
+    ports:
+      - 8083:8081
+    volumes:
+      - ./conf/worker3:/conf
+      - ./data/worker3:/tmp/data
